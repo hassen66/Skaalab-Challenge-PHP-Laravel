@@ -12,29 +12,78 @@ use OpenApi\Annotations as OA;
 
 class ProductController extends Controller
 {
-    /**
+/**
      * @OA\Get(
      *     path="/api/products",
-     *     summary="Get all products",
+     *     summary="Get all products with optional search and filter",
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         description="Search products by name or description",
+     *         required=false,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="category_id",
+     *         in="query",
+     *         description="Filter products by category ID",
+     *         required=false,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="min_price",
+     *         in="query",
+     *         description="Minimum price for filtering products",
+     *         required=false,
+     *         @OA\Schema(type="number", format="float")
+     *     ),
+     *     @OA\Parameter(
+     *         name="max_price",
+     *         in="query",
+     *         description="Maximum price for filtering products",
+     *         required=false,
+     *         @OA\Schema(type="number", format="float")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="List of products",
      *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(ref="#/components/schemas/Product")
+     *             type="object",
+     *             @OA\Property(property="statusCode", type="integer", example=200),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Product"))
      *         )
      *     )
      * )
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with('categories')->paginate(10);
+        $query = Product::with('categories');
+
+        if ($request->has('search') && $request->search !== '') {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('description', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        if ($request->has('category_id') && $request->category_id !== '') {
+            $query->whereHas('categories', function ($q) use ($request) {
+                $q->where('categories.id', $request->category_id);
+            });
+        }
+
+        if ($request->has('min_price') && $request->min_price !== '') {
+            $query->where('price', '>=', $request->min_price);
+        }
+        if ($request->has('max_price') && $request->max_price !== '') {
+            $query->where('price', '<=', $request->max_price);
+        }
+
+        $products = $query->paginate(10);
 
         return response()->json([
             'statusCode' => 200,
-            'data' => [
-                $products
-            ]
+            'data' => $products
         ]);
     }
 
