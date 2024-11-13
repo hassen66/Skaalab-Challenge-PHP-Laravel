@@ -62,13 +62,6 @@ docker-compose up -d
 
 Access Swagger documentation at `/api/documentation` when running the application.
 
-## Running Tests
-
-To run unit and feature tests:
-```bash
-php artisan test
-```
-
 ## Usage
 
 1. **Register and Login**: Register a new user and obtain an authentication token.
